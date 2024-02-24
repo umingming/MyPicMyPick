@@ -2,7 +2,7 @@
     <div id="box">
         <input type="file" @change="loadImage" />
         <canvas ref="canvasRef"></canvas>
-        <button @click="updateSize">사이즈 조정</button>
+        <div id="drag-area" @dragover.prevent="dragImage" @drop.prevent="dropImage"></div>
     </div>
 </template>
 
@@ -15,6 +15,26 @@ export default {
         const canvasRef = ref(null);
         const img = reactive(new Image());
 
+        /**
+         * @param {DragEvent} event
+         */
+        function dragImage({ dataTransfer }) {
+            dataTransfer.dropEffect = "copy";
+        }
+
+        /**
+         * @param {DragEvent} event
+         */
+        function dropImage({ dataTransfer: { files } }) {
+            if (files.length) {
+                loadImage({ target: { files } });
+            }
+        }
+
+        /**
+         * @param {Event} event
+         * @param {Object} event.target
+         */
         function loadImage({ target }) {
             const file = target.files[0];
             if (file) {
@@ -32,6 +52,9 @@ export default {
             }
         }
 
+        /**
+         * 캔버스 크기에 맞춰 이미지를 그린다.
+         */
         function drawImage() {
             const { width, height } = canvasRef.value;
             const ctx = canvasRef.value.getContext("2d");
@@ -42,16 +65,26 @@ export default {
         const isResizing = ref(false);
         const point = reactive({ x: 0, y: 0 });
 
+        /**
+         * @param {Number} x
+         * @param {Number} y
+         */
         function initPoint(x, y) {
             point.x = x;
             point.y = y;
         }
 
+        /**
+         * @param {Number} x
+         * @param {Number} y
+         */
         function resizeImage(x, y) {
-            canvasRef.value.width += x - point.x;
-            canvasRef.value.height += y - point.y;
-            drawImage();
-            initPoint(x, y);
+            if (isResizing.value) {
+                canvasRef.value.width += x - point.x;
+                canvasRef.value.height += y - point.y;
+                drawImage();
+                initPoint(x, y);
+            }
         }
 
         onMounted(() => {
@@ -62,16 +95,16 @@ export default {
                     isResizing.value = true;
                 }
             });
-            window.addEventListener("mousemove", ({ x, y }) => {
-                if (isResizing.value) {
-                    resizeImage(x, y);
-                }
-            });
-            window.addEventListener("mouseup", () => {
-                isResizing.value = false;
-            });
+            window.addEventListener("mousemove", ({ x, y }) => resizeImage(x, y));
+            window.addEventListener("mouseup", () => (isResizing.value = false));
         });
-        return { canvasRef, loadImage };
+        return {
+            // Upload
+            canvasRef,
+            dragImage,
+            dropImage,
+            loadImage
+        };
     }
 };
 </script>
@@ -81,6 +114,11 @@ export default {
     position: relative;
     width: 100vw;
     height: 100vh;
+}
+#drag-area {
+    width: 500px;
+    height: 100px;
+    background: gray;
 }
 canvas {
     position: relative;
