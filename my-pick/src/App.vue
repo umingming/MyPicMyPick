@@ -1,4 +1,17 @@
 <template>
+    <div id="grid" ref="gridRef">
+        <div v-for="row of count" :key="row" ref="rowRefs">
+            <div
+                v-for="col of count"
+                :key="getCellKey(row, col)"
+                ref="cellRefs"
+                class="cell"
+                @click="clickCell"
+                :data-row="row"
+                :data-col="col"
+            ></div>
+        </div>
+    </div>
     <div id="box">
         <input type="file" @change="loadImage" />
         <canvas ref="canvasRef"></canvas>
@@ -7,7 +20,7 @@
 </template>
 
 <script>
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, nextTick, readonly } from "vue";
 
 export default {
     setup() {
@@ -98,18 +111,77 @@ export default {
             window.addEventListener("mousemove", ({ x, y }) => resizeImage(x, y));
             window.addEventListener("mouseup", () => (isResizing.value = false));
         });
+
+        //============================= Grid Layout
+        const gridRef = ref(null);
+        const rowRefs = ref([]);
+        const cellRefs = ref([]);
+        const count = 10;
+
+        const CELL = readonly({
+            ACTIVE: "active",
+            INACTIVE: "inactive",
+            CHECKED: "checked"
+        });
+
+        function initGrid() {
+            const size = 1000 / count + "px";
+
+            rowRefs.value.forEach((row) => (row.style.height = size));
+            cellRefs.value.forEach((cell) => (cell.style.width = size));
+        }
+
+        function getCellKey(row, col) {
+            return `${row}-${col}`;
+        }
+
+        function clickCell({ target }) {
+            Object.keys(CELL)
+                .filter((className) => className !== CELL.ACTIVE)
+                .forEach((className) => target.classList.remove(className));
+            target.classList.toggle(CELL.ACTIVE);
+        }
+
+        onMounted(() => nextTick(initGrid));
+
         return {
             // Upload
             canvasRef,
             dragImage,
             dropImage,
-            loadImage
+            loadImage,
+
+            // Grid
+            gridRef,
+            rowRefs,
+            cellRefs,
+            count,
+            getCellKey,
+            clickCell
         };
     }
 };
 </script>
 
 <style>
+/* Grid */
+#grid {
+    width: 1002px;
+    height: 1002px;
+    border: 1px solid black;
+}
+
+.cell {
+    display: inline-block;
+    background-color: #eee; /* 셀 배경색 */
+    border: 1px solid #ddd; /* 셀 경계선 */
+    height: 100%;
+}
+.cell.active {
+    background-color: black;
+}
+
+/* Box */
 #box {
     position: relative;
     width: 100vw;
