@@ -1,93 +1,90 @@
 <template>
-    <div>
-        <input type="file" @change="convertToPixel" />
+    <div id="box">
+        <input type="file" @change="loadImage" />
         <canvas ref="canvasRef"></canvas>
+        <button @click="updateSize">사이즈 조정</button>
     </div>
 </template>
 
 <script>
-import { ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 
 export default {
     setup() {
+        //============================= Image Upload
         const canvasRef = ref(null);
+        const img = reactive(new Image());
 
-        const convertToPixel = ({ target }) => {
+        function loadImage({ target }) {
             const file = target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const offscreenCanvas = document.createElement("canvas");
-                    const offscreenCtx = offscreenCanvas.getContext("2d");
-
-                    offscreenCanvas.width = 100;
-                    offscreenCanvas.height = 150;
-                    offscreenCtx.drawImage(img, 0, 0, 100, 150);
-
-                    const smallImageData = offscreenCtx.getImageData(0, 0, 100, 150);
-                    const data = smallImageData.data;
-                    for (let i = 0; i < data.length; i += 4) {
-                        const grayscale = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
-                        const threshold = grayscale > 128 ? 255 : 0;
-                        data[i] = threshold; // red
-                        data[i + 1] = threshold; // green
-                        data[i + 2] = threshold; // blue
-                    }
-                    offscreenCtx.putImageData(smallImageData, 0, 0);
-
-                    const canvas = canvasRef.value;
-                    canvas.width = 1000; // 실제 크기
-                    canvas.height = 1500; // 실제 크기
-                    const ctx = canvas.getContext("2d");
-
-                    for (let y = 0; y < 150; y++) {
-                        for (let x = 0; x < 100; x++) {
-                            const pixel = offscreenCtx.getImageData(x, y, 1, 1).data;
-                            ctx.fillStyle = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
-                            ctx.fillRect(x * 10, y * 10, 10, 10);
-                        }
-                    }
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = ({ target: { result } }) => {
+                    img.onload = () => {
+                        const { width, height } = img;
+                        canvasRef.value.width = width;
+                        canvasRef.value.height = height;
+                        drawImage();
+                    };
+                    img.src = result;
                 };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        };
-        return {
-            canvasRef,
-            convertToPixel
-        };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function drawImage() {
+            const { width, height } = canvasRef.value;
+            const ctx = canvasRef.value.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+        }
+
+        //============================= Resize
+        const isResizing = ref(false);
+        const point = reactive({ x: 0, y: 0 });
+
+        function initPoint(x, y) {
+            point.x = x;
+            point.y = y;
+        }
+
+        function resizeImage(x, y) {
+            canvasRef.value.width += x - point.x;
+            canvasRef.value.height += y - point.y;
+            drawImage();
+            initPoint(x, y);
+        }
+
+        onMounted(() => {
+            canvasRef.value.addEventListener("mousedown", ({ offsetX, offsetY, x, y }) => {
+                const { width, height } = canvasRef.value;
+                if (Math.abs(width - offsetX) < 10 && Math.abs(height - offsetY) < 10) {
+                    initPoint(x, y);
+                    isResizing.value = true;
+                }
+            });
+            window.addEventListener("mousemove", ({ x, y }) => {
+                if (isResizing.value) {
+                    resizeImage(x, y);
+                }
+            });
+            window.addEventListener("mouseup", () => {
+                isResizing.value = false;
+            });
+        });
+        return { canvasRef, loadImage };
     }
 };
 </script>
 
-<style scoped>
-header {
-    line-height: 1.5;
+<style>
+#box {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
 }
-
-.logo {
-    display: block;
-    margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-    header {
-        display: flex;
-        place-items: center;
-        padding-right: calc(var(--section-gap) / 2);
-    }
-
-    .logo {
-        margin: 0 2rem 0 0;
-    }
-
-    header .wrapper {
-        display: flex;
-        place-items: flex-start;
-        flex-wrap: wrap;
-    }
+canvas {
+    position: relative;
+    left: 0;
+    top: 0;
 }
 </style>
