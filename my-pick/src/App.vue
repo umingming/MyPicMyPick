@@ -1,5 +1,11 @@
 <template>
     <div id="grid" ref="gridRef">
+        <div
+            v-for="col of count"
+            :key="getCellKey(-1, col)"
+            ref="configRefs"
+            class="config col-config"
+        ></div>
         <div v-for="row of count" :key="row" ref="rowRefs">
             <div
                 v-for="col of count"
@@ -116,6 +122,7 @@ export default {
         const gridRef = ref(null);
         const rowRefs = ref([]);
         const cellRefs = ref([]);
+        const configRefs = ref([]);
         const count = 10;
 
         const CELL = readonly({
@@ -129,6 +136,7 @@ export default {
 
             rowRefs.value.forEach((row) => (row.style.height = size));
             cellRefs.value.forEach((cell) => (cell.style.width = size));
+            configRefs.value.forEach((cell) => (cell.style.width = size));
         }
 
         function getCellKey(row, col) {
@@ -144,6 +152,38 @@ export default {
 
         onMounted(() => nextTick(initGrid));
 
+        //============================= Logic
+        const logicMap = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 1, 1, 0, 0],
+            [0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ];
+        const config = {
+            row: Array.from({ length: count }, () => [0]),
+            col: Array.from({ length: count }, () => [0])
+        };
+
+        for (let i = 0; i < count; i++) {
+            for (let j = 0; j < count; j++) {
+                updateConfig(config.row, i, logicMap[i][j]);
+                updateConfig(config.col, j, logicMap[i][j]);
+            }
+        }
+
+        function updateConfig(config, index, flag) {
+            flag ? config[index][config[index].length - 1]++ : config[index].push(0);
+        }
+
+        config.row = config.row.map((config) => config.filter((value) => value));
+        config.col = config.col.map((config) => config.filter((value) => value));
+
         return {
             // Upload
             canvasRef,
@@ -155,9 +195,12 @@ export default {
             gridRef,
             rowRefs,
             cellRefs,
+            configRefs,
             count,
             getCellKey,
             clickCell
+
+            // Grid
         };
     }
 };
@@ -166,11 +209,10 @@ export default {
 <style>
 /* Grid */
 #grid {
-    width: 1002px;
-    height: 1002px;
+    width: 1202px;
+    height: 1202px;
     border: 1px solid black;
 }
-
 .cell {
     display: inline-block;
     background-color: #eee; /* 셀 배경색 */
@@ -179,6 +221,17 @@ export default {
 }
 .cell.active {
     background-color: black;
+}
+.config {
+    display: inline-block;
+    border: 1px solid #ddd;
+}
+.config.col-config {
+    height: 200px;
+}
+.config.row-config {
+    width: 200px;
+    height: 100%;
 }
 
 /* Box */
