@@ -12,9 +12,9 @@
                 :key="getCellKey(row, col)"
                 ref="cellRefs"
                 class="cell"
-                @click="clickCell"
                 :data-row="row"
                 :data-col="col"
+                @click="clickCell"
             ></div>
         </div>
     </div>
@@ -150,7 +150,9 @@ export default {
             target.classList.toggle(CELL.ACTIVE);
         }
 
-        onMounted(() => nextTick(initGrid));
+        onMounted(() => {
+            nextTick(initGrid);
+        });
 
         //============================= Logic
         const logicMap = [
